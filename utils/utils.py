@@ -69,6 +69,8 @@ class Movement:
         
 class Position:
 
+    MULTIPLIER = 100
+
     x_map = {
         0: "A",
         1: "B",
@@ -89,6 +91,11 @@ class Position:
     
     def map_position(self) -> tuple:
         return (Position.x_map[Movement.x], str(Movement.y + 1))
+    
+    def get_center_pixel(self) -> tuple:
+        center_x = (self.x() * Position.MULTIPLIER) + (Position.MULTIPLIER)
+        center_y = (self.y() * Position.MULTIPLIER) + (Position.MULTIPLIER)
+        return (center_x, center_y)
     
     def x(self) -> int:
         return Movement.x
