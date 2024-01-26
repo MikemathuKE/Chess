@@ -1,4 +1,5 @@
 from enum import Enum
+import math
 
 class Movement:
     # Normal Moves
@@ -86,6 +87,9 @@ class Position:
         Movement.x: int = _x
         Movement.y: int = _y
 
+    def __str__(self) -> str:
+        return f"({Movement.x}, {Movement.y})"
+
     def abs_position(self) -> tuple:
         return (Movement.x, Movement.y)
     
@@ -107,8 +111,17 @@ class Position:
     def map_position_index(x: int) -> str:
         return Position.x_map[x]
     
+    @staticmethod
+    def interpret_position(pixel_X: int, pixel_Y: int) -> tuple:
+        x = math.floor((pixel_X / Position.MULTIPLIER) - 0.5)
+        y = math.floor((pixel_Y / Position.MULTIPLIER) - 0.5)
+        return (x, y)
+    
     def __eq__(self, other) -> bool:
-        return Movement.x == other.x and Movement.y == other.y
+        if isinstance(other, Position):
+            return Movement.x == other.x() and Movement.y == other.y()
+        elif isinstance(other, tuple):
+            return Movement.x == other[0] and Movement.y == other[1]
 
 class Color(Enum):
     BLACK = 0

@@ -1,5 +1,4 @@
 import arcade
-import pandas as pd
 from utils.utils import *
 from characters.King import King
 from characters.Queen import Queen
@@ -23,8 +22,14 @@ class Chess(arcade.Window):
         self.display_board.draw()
         self.characters.draw()
 
-    def cell_click(self, cell: tuple) -> None:
-        print(cell)
+    def on_mouse_press(self, x, y, button, modifiers):
+        click_pos = Position.interpret_position(x, y)
+        for character in self.characters:
+            # print(type(character))
+            # print(character.get_grid_position(), click_pos)
+            if character.get_grid_position() == click_pos:
+                print(character)
+                break
 
     def init_board(self):
         self.active_cell = None
@@ -50,6 +55,7 @@ class Chess(arcade.Window):
 
     def init_characters(self):
         self.characters = arcade.SpriteList()
+
         self.white_rook_A = Rook(Position(0, 0), Color.WHITE, "white_rook.png")
         self.characters.append(self.white_rook_A)
         self.white_rook_B = Rook(Position(7, 0), Color.WHITE, "white_rook.png")
