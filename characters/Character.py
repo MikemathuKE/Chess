@@ -29,22 +29,41 @@ class Character(arcade.Sprite, ABC):
         center_x, center_y = self.grid_position.get_center_pixel()
         return super().set_position(center_x, center_y)
     
-    def get_grid_position(self) -> Position:
+    def get_grid_position(self) -> tuple:
         return Position.interpret_position(self.position[0], self.position[1])
     
     def set_grid_position(self, _position: Position) -> None:
         self.grid_position = _position
         self.set_pixel_position()
 
+    def get_direction_constraints(self) -> list:
+        return self.direction_constraints
+    
+    def set_direction_constraints(self, _direction_constraints: list) -> None:
+        self.direction_constraints = _direction_constraints
+
+    def get_max_steps(self) -> int:
+        return self.max_steps
+    
+    def set_max_steps(self, _max_steps: int) -> None:
+        self.max_steps = _max_steps
+
     @abstractmethod
     def move(self, direction: str, steps: int) -> bool:
         pass
 
     def move_valid(self, direction: str, steps: int) -> bool:
-        if steps < self.max_steps:
+        print(self.max_steps, self.direction_constraints)
+        if steps <= self.max_steps:
             if direction in self.direction_constraints:
                 return True
         return False
+    
+    def get_piece_color(self) -> Color:
+        return self.color_piece
+    
+    def is_inversed(self) -> bool:
+        return self.color_piece == Color.BLACK
 
     def kill(self) -> None:
         self.alive = False

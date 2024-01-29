@@ -22,14 +22,83 @@ class Chess(arcade.Window):
         self.display_board.draw()
         self.characters.draw()
 
+    def find_piece(self, _position: tuple):
+        for character in self.characters:
+            if character.get_grid_position() == _position:
+                return character
+        return None
+
     def on_mouse_press(self, x, y, button, modifiers):
         click_pos = Position.interpret_position(x, y)
-        for character in self.characters:
-            # print(type(character))
-            # print(character.get_grid_position(), click_pos)
-            if character.get_grid_position() == click_pos:
-                print(character)
-                break
+
+        if self.active_cell is None:
+            piece = self.find_piece(click_pos)
+            if piece:
+                self.active_cell = piece.get_grid_position()
+                print(f"Active Cell: {self.active_cell}")
+        else:
+            active_character = None
+
+            #  Retrieve the active character
+            active_character = self.find_piece(self.active_cell)
+
+            # Calculate the direction and steps
+            direction, steps = Movement.calculate_direction(self.active_cell, click_pos, active_character.is_inversed())
+            print(direction, steps)
+
+            # Check if the move is valid
+            if active_character.move_valid(direction, steps):
+                move_possible = True
+                kill_piece = None
+                print("Move Valid")
+
+                # Check each step to see if there is a piece in the way
+                next_position = self.active_cell
+                for step in range(steps):
+                    print(f"Calculation Step: ", step)
+                    # Calculate the next position
+                    print(f"Initial Position: {next_position}")
+                    next_position = Movement.predict_position(next_position, direction, 1, active_character.is_inversed())
+                    print(f"Next Position: {next_position}")
+                    # Check if there is a piece in the way
+                    kill_piece = self.find_piece(next_position)
+                    if kill_piece:
+                        # Check if the piece is the same color
+                        if kill_piece.get_piece_color() == active_character.get_piece_color():
+                            # If it is the same color, the move is not possible
+                            move_possible = False
+                            kill_piece = None
+                            print("Same color piece in the way")
+                            break
+                        elif step != steps - 1:
+                            # If steps do not match current pos, the move is not possible
+                            move_possible = False
+                            kill_piece = None
+                            print("Another piece is blocking the way")
+                            break
+                        else:
+                            # If it is not the same color and steps do not match current pos, the move is possible
+                            move_possible = True
+                            break
+                    else:
+                        # If there is no piece in the way, the move is possible\
+                        move_possible = True
+                        pass
+
+                # If the move is valid, move the piece
+                if move_possible:
+                    print("Move Possible")
+                    active_character.set_grid_position(Position(click_pos[0], click_pos[1]))
+                    if kill_piece:
+                        kill_piece.kill()
+                        self.characters.remove(kill_piece)
+                    self.active_cell = None
+                else:
+                    print("Move Not Possible")
+                self.active_cell = None
+            else:
+                print("Move Not Valid")
+                self.active_cell = None
 
     def init_board(self):
         self.active_cell = None
