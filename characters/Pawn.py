@@ -12,6 +12,6 @@ class Pawn(Character):
         ])
         self.set_max_steps(2)
 
-    def move(self, direction: str, steps: int) -> bool:
-        if self.move_valid(direction, steps):
-            pass
+    def move(self, _position: tuple, direction: str, steps: int) -> bool:
+        self.set_grid_position(Position(_position[0], _position[1]))
+        return True

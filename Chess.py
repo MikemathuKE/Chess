@@ -57,27 +57,31 @@ class Chess(arcade.Window):
         else:
             active_character = None
 
+            new_selection = self.find_piece(click_pos)
+            if new_selection:
+                if new_selection.get_piece_color() == self.player_turn:
+                    self.set_active_cell(click_pos)
+                    return
+
             #  Retrieve the active character
             active_character = self.find_piece(self.active_cell)
 
             # Calculate the direction and steps
             direction, steps = Movement.calculate_direction(self.active_cell, click_pos, active_character.is_inversed())
-            print(direction, steps)
 
             # Check if the move is valid
             if active_character.move_valid(direction, steps):
                 move_possible = True
                 kill_piece = None
-                print("Move Valid")
 
                 # Check each step to see if there is a piece in the way
                 next_position = self.active_cell
                 for step in range(steps):
-                    print(f"Calculation Step: ", step)
+                    # print(f"Calculation Step: ", step)
                     # Calculate the next position
-                    print(f"Initial Position: {next_position}")
+                    # print(f"Initial Position: {next_position}")
                     next_position = Movement.predict_position(next_position, direction, 1, active_character.is_inversed())
-                    print(f"Next Position: {next_position}")
+                    # print(f"Next Position: {next_position}")
                     # Check if there is a piece in the way
                     kill_piece = self.find_piece(next_position)
                     if kill_piece:
@@ -105,19 +109,43 @@ class Chess(arcade.Window):
 
                 # If the move is valid, move the piece
                 if move_possible:
-                    print("Move Possible")
-                    active_character.set_grid_position(Position(click_pos[0], click_pos[1]))
-                    if kill_piece:
-                        kill_piece.kill()
-                        self.characters.remove(kill_piece)
-                    self.set_active_cell(None)
-                    self.change_turn()
+                    allow_move = True
+                    if isinstance(active_character, Pawn):
+                        if kill_piece:
+                            allow_move = self.pawn_attack(active_character)
+                        else:
+                            allow_move = self.pawn_upgrade(active_character)
+                    if isinstance(active_character, King):
+                        allow_move = self.king_castle(active_character)
+
+                    if allow_move:
+                        within_character_rules = active_character.move(click_pos, kill_piece)
+                        if kill_piece and within_character_rules:
+                            kill_piece.kill()
+                            self.characters.remove(kill_piece)
+                        self.set_active_cell(None)
+                        self.change_turn()
                 else:
                     print("Move Not Possible")
                 self.set_active_cell(None)
             else:
                 print("Move Not Valid")
                 self.set_active_cell(None)
+
+    def pawn_upgrade(self, _pawn: Pawn) -> bool:
+        pass
+
+    def pawn_attack(self, _pawn: Pawn) -> bool:
+        pass
+
+    def king_castle(self, _king: King) -> bool:
+        pass
+
+    def checked_king(self) -> bool:
+        pass
+
+    def check_mate(self) -> bool:
+        pass
 
     def init_board(self):
         self.set_active_cell(None)
