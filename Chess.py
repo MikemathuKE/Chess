@@ -22,6 +22,8 @@ class Chess(arcade.Window):
         self.clear()
         self.display_board.draw()
         self.characters.draw()
+        if self.cell_highlight:
+            self.cell_highlight.draw()
 
     def change_turn(self) -> None:
         if self.player_turn == Color.WHITE:
@@ -34,6 +36,14 @@ class Chess(arcade.Window):
             if character.get_grid_position() == _position:
                 return character
         return None
+    
+    def set_active_cell(self, _position: tuple):
+        self.active_cell = _position
+        if _position:
+            center_x, center_y = Position(_position[0], _position[1]).get_center_pixel()
+            self.cell_highlight = arcade.create_rectangle_outline(center_x=center_x, center_y=center_y, width=Position.MULTIPLIER, height=Position.MULTIPLIER, color=arcade.color.GREEN, border_width=5)
+        else:
+            self.cell_highlight = None
 
     def on_mouse_press(self, x, y, button, modifiers):
         click_pos = Position.interpret_position(x, y)
@@ -42,7 +52,7 @@ class Chess(arcade.Window):
             piece = self.find_piece(click_pos)
             if piece:
                 if piece.get_piece_color() == self.player_turn:
-                    self.active_cell = piece.get_grid_position()
+                    self.set_active_cell(click_pos)
                     print(f"Active Cell: {self.active_cell}")
         else:
             active_character = None
@@ -100,17 +110,17 @@ class Chess(arcade.Window):
                     if kill_piece:
                         kill_piece.kill()
                         self.characters.remove(kill_piece)
-                    self.active_cell = None
+                    self.set_active_cell(None)
                     self.change_turn()
                 else:
                     print("Move Not Possible")
-                self.active_cell = None
+                self.set_active_cell(None)
             else:
                 print("Move Not Valid")
-                self.active_cell = None
+                self.set_active_cell(None)
 
     def init_board(self):
-        self.active_cell = None
+        self.set_active_cell(None)
         self.display_board = arcade.ShapeElementList()
 
         light_bg = arcade.color.BEAU_BLUE
@@ -130,6 +140,8 @@ class Chess(arcade.Window):
                 self.display_board.append(arcade.create_rectangle_filled(center_x=center_x, center_y=center_y, width=Position.MULTIPLIER, height=Position.MULTIPLIER, color=color))
                 color = swap_color(color)
             color = swap_color(color)
+
+        self.cell_highlight = None
 
     def init_characters(self):
         self.characters = arcade.SpriteList()
