@@ -16,11 +16,18 @@ class Chess(arcade.Window):
         self.asset_dir = "./assets"
         self.init_board()
         self.init_characters()
+        self.player_turn = Color.WHITE
 
     def on_draw(self):
         self.clear()
         self.display_board.draw()
         self.characters.draw()
+
+    def change_turn(self) -> None:
+        if self.player_turn == Color.WHITE:
+            self.player_turn = Color.BLACK
+        else:
+            self.player_turn = Color.WHITE
 
     def find_piece(self, _position: tuple):
         for character in self.characters:
@@ -34,8 +41,9 @@ class Chess(arcade.Window):
         if self.active_cell is None:
             piece = self.find_piece(click_pos)
             if piece:
-                self.active_cell = piece.get_grid_position()
-                print(f"Active Cell: {self.active_cell}")
+                if piece.get_piece_color() == self.player_turn:
+                    self.active_cell = piece.get_grid_position()
+                    print(f"Active Cell: {self.active_cell}")
         else:
             active_character = None
 
@@ -93,6 +101,7 @@ class Chess(arcade.Window):
                         kill_piece.kill()
                         self.characters.remove(kill_piece)
                     self.active_cell = None
+                    self.change_turn()
                 else:
                     print("Move Not Possible")
                 self.active_cell = None
