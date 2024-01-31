@@ -29,6 +29,12 @@ class Character(arcade.Sprite, ABC):
         center_x, center_y = self.grid_position.get_center_pixel()
         return super().set_position(center_x, center_y)
     
+    def is_first_move(self) -> bool:
+        return self.first_move
+    
+    def first_move_made(self) -> None:
+        self.first_move = False
+    
     def get_grid_position(self) -> tuple:
         return Position.interpret_position(self.position[0], self.position[1])
     
@@ -74,6 +80,11 @@ class Character(arcade.Sprite, ABC):
 
     def is_alive(self) -> bool:
         return self.alive
+    
+    def move(self, _position: tuple) -> bool:
+        self.set_grid_position(Position(_position[0], _position[1]))
+        if self.first_move:
+            self.first_move_made()
     
     def __str__(self) -> str:
         return self.name

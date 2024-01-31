@@ -85,10 +85,10 @@ class Movement:
             elif x_steps == -2 and y_steps == -1:
                 move = Movement.SWW
             steps = 1
-            print("Knight Move: ", type(x_steps), type(y_steps), move)
+            # print("Knight Move: ", type(x_steps), type(y_steps), move)
 
         if inverse:
-            print("Move Inversing: ", move, x_steps, y_steps)
+            # print("Move Inversing: ", move, x_steps, y_steps)
             move = inverse_map[move]
         return (move, steps)
     

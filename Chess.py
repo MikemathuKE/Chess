@@ -53,7 +53,7 @@ class Chess(arcade.Window):
             if piece:
                 if piece.get_piece_color() == self.player_turn:
                     self.set_active_cell(click_pos)
-                    print(f"Active Cell: {self.active_cell}")
+                    # print(f"Active Cell: {self.active_cell}")
         else:
             active_character = None
 
@@ -103,7 +103,7 @@ class Chess(arcade.Window):
                             move_possible = True
                             break
                     else:
-                        # If there is no piece in the way, the move is possible\
+                        # If there is no piece in the way, the move is possible
                         move_possible = True
                         pass
 
@@ -111,20 +111,25 @@ class Chess(arcade.Window):
                 if move_possible:
                     allow_move = True
                     if isinstance(active_character, Pawn):
-                        if kill_piece:
-                            allow_move = self.pawn_attack(active_character)
-                        else:
+                        if active_character.is_first_move():
+                            allow_move = self.pawn_first_move(active_character, direction, steps)
+                        elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+                            allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
+                        elif self.get_piece_rank(active_character) == 8:
                             allow_move = self.pawn_upgrade(active_character)
                     if isinstance(active_character, King):
                         allow_move = self.king_castle(active_character)
 
                     if allow_move:
-                        within_character_rules = active_character.move(click_pos, kill_piece)
-                        if kill_piece and within_character_rules:
+                        active_character.move(click_pos)
+                        if kill_piece:
                             kill_piece.kill()
                             self.characters.remove(kill_piece)
                         self.set_active_cell(None)
                         self.change_turn()
+                    else:
+                        print("Move Not Allowed")
+                        self.set_active_cell(None)
                 else:
                     print("Move Not Possible")
                 self.set_active_cell(None)
@@ -132,19 +137,47 @@ class Chess(arcade.Window):
                 print("Move Not Valid")
                 self.set_active_cell(None)
 
-    def pawn_upgrade(self, _pawn: Pawn) -> bool:
-        pass
+    def pawn_upgrade(self, _pawn: Pawn) -> bool:                
+        return False
+    
+    def pawn_first_move(self, _pawn: Pawn, direction: str, steps: int) -> bool:
+        if steps <= 2:
+            if direction == Movement.FORWARD:
+                if _pawn.is_first_move():
+                    _pawn.set_max_steps(1)
+                    print("Taking Pawn First Steps")
+                    return True
+        print("Not Taking Pawn First Steps")
+        return False
+    
+    def get_piece_rank(self, _piece) -> int:
+        if _piece.get_piece_color() == Color.WHITE:
+            return _piece.get_grid_position()[1] + 1
+        else:
+            return 8 - _piece.get_grid_position()[1]
+    
+    def pawn_en_passant(self, _pawn: Pawn, direction: str, steps: int) -> bool:
+        pass                    
 
-    def pawn_attack(self, _pawn: Pawn) -> bool:
-        pass
+    def pawn_attack(self, _pawn: Pawn, direction: str, steps: int, kill_piece) -> bool:
+        if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+            if steps == 1:
+                if kill_piece:
+                    if _pawn.is_first_move():
+                        _pawn.set_max_steps(1)
+                    print("Pawn Taking Another Piece")
+                    return True
+        print("Pawn Not Attacking")
+        return False
+
 
     def king_castle(self, _king: King) -> bool:
         pass
 
-    def checked_king(self) -> bool:
+    def is_checked_king(self) -> bool:
         pass
 
-    def check_mate(self) -> bool:
+    def is_check_mate(self) -> bool:
         pass
 
     def init_board(self):
