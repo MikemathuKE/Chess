@@ -113,8 +113,10 @@ class Chess(arcade.Window):
                     if isinstance(active_character, Pawn):
                         if active_character.is_first_move():
                             allow_move = self.pawn_first_move(active_character, direction, steps)
-                        elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+                        elif ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
                             allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
+                        elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+                            allow_move = self.pawn_en_passant(active_character, direction, steps)
                         elif self.get_piece_rank(active_character) == 8:
                             allow_move = self.pawn_upgrade(active_character)
                     if isinstance(active_character, King):
@@ -157,7 +159,12 @@ class Chess(arcade.Window):
             return 8 - _piece.get_grid_position()[1]
     
     def pawn_en_passant(self, _pawn: Pawn, direction: str, steps: int) -> bool:
-        pass                    
+        if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+            if steps == 1:
+                # TODO: Check if previous move was a 2step opening move of a pawn
+                print("Pawn En Passant")
+                return True
+        return False                    
 
     def pawn_attack(self, _pawn: Pawn, direction: str, steps: int, kill_piece) -> bool:
         if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
@@ -184,8 +191,8 @@ class Chess(arcade.Window):
         self.set_active_cell(None)
         self.display_board = arcade.ShapeElementList()
 
-        light_bg = arcade.color.BLEU_DE_FRANCE
-        dark_bg = arcade.color.BLUEBONNET
+        light_bg = arcade.color.BLUE_GRAY
+        dark_bg = arcade.color.BLUE_SAPPHIRE
         
         def swap_color(color: str) -> str:
             if color == light_bg:
