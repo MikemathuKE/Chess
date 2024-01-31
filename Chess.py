@@ -151,8 +151,8 @@ class Chess(arcade.Window):
         self.set_active_cell(None)
         self.display_board = arcade.ShapeElementList()
 
-        light_bg = arcade.color.BEAU_BLUE
-        dark_bg = arcade.color.BALL_BLUE
+        light_bg = arcade.color.BLEU_DE_FRANCE
+        dark_bg = arcade.color.BLUEBONNET
         
         def swap_color(color: str) -> str:
             if color == light_bg:
