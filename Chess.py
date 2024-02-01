@@ -267,7 +267,6 @@ class Chess(arcade.Window):
             inclusion = None
         else:
             king_pos = king.get_grid_position()
-        check_valid = False
         self.checking_pieces[color] = []
         for character in self.characters:
             if character.get_piece_color() != color:
@@ -281,11 +280,10 @@ class Chess(arcade.Window):
         if inclusion in self.checking_pieces[color]:
             self.checking_pieces[color].remove(inclusion)                    
         if len(self.checking_pieces[color]) > 0:
-            print(self.checking_pieces)
             if not inclusion:
                 self.set_king_check(king.get_grid_position())
             string_color = "White" if color == Color.WHITE else "Black"
-            print(f"{string_color} King in check by {character.get_name()} at {character.get_grid_position()}")
+            print(f"Pieces checking {string_color} king", self.checking_pieces)
             return True
         self.set_king_check(None)
         return False
