@@ -75,37 +75,7 @@ class Chess(arcade.Window):
                 kill_piece = None
 
                 # Check each step to see if there is a piece in the way
-                next_position = self.active_cell
-                for step in range(steps):
-                    # print(f"Calculation Step: ", step)
-                    # Calculate the next position
-                    # print(f"Initial Position: {next_position}")
-                    next_position = Movement.predict_position(next_position, direction, 1, active_character.is_inversed())
-                    # print(f"Next Position: {next_position}")
-                    # Check if there is a piece in the way
-                    kill_piece = self.find_piece(next_position)
-                    if kill_piece:
-                        # Check if the piece is the same color
-                        if kill_piece.get_piece_color() == active_character.get_piece_color():
-                            # If it is the same color, the move is not possible
-                            move_possible = False
-                            kill_piece = None
-                            print("Same color piece in the way")
-                            break
-                        elif step != steps - 1:
-                            # If steps do not match current pos, the move is not possible
-                            move_possible = False
-                            kill_piece = None
-                            print("Another piece is blocking the way")
-                            break
-                        else:
-                            # If it is not the same color and steps do not match current pos, the move is possible
-                            move_possible = True
-                            break
-                    else:
-                        # If there is no piece in the way, the move is possible
-                        move_possible = True
-                        pass
+                move_possible, kill_piece = self.is_path_clear(active_character, self.active_cell, direction, steps)
 
                 # If the move is valid, move the piece
                 if move_possible:
@@ -141,6 +111,39 @@ class Chess(arcade.Window):
             else:
                 print("Move Not Valid")
                 self.set_active_cell(None)
+
+    def is_path_clear(self, piece, next_position: tuple, direction: str, steps: int):
+        move_possible = False
+        kill_piece = None
+        for step in range(steps):
+            next_position = Movement.predict_position(next_position, direction, 1, piece.is_inversed())
+
+            kill_piece = self.find_piece(next_position)
+            if kill_piece:
+                if kill_piece.get_piece_color() == piece.get_piece_color():
+                    # If it is the same color, the move is not possible
+                    move_possible = False
+                    kill_piece = None
+                    print("Same color piece in the way")
+                    break
+                elif step != steps - 1:
+                    # If steps do not match current pos, the move is not possible
+                    move_possible = False
+                    kill_piece = None
+                    print("Another piece is blocking the way")
+                    break
+                else:
+                    # If it is not the same color and steps do not match current pos, the move is possible
+                    move_possible = True
+                    break
+            else:
+                # If there is no piece in the way, the move is possible
+                move_possible = True
+                pass
+
+            if next_position[0] < 0 or next_position[1] < 0:
+                print(f"Next Postition Fails: {next_position}")
+        return move_possible, kill_piece
 
     def pawn_upgrade(self, _pawn: Pawn) -> bool:                
         return False
@@ -187,31 +190,42 @@ class Chess(arcade.Window):
         if _king.get_piece_color() == Color.WHITE:
             if steps == 2:
                 if direction == Movement.LEFT:
-                    castle_piece = self.find_piece((0, 0))
+                    curr_rook_pos = (0, 0)
                     expected_rook_pos = (3, 0)
                     possible_castle = True
+                    rook_steps = 3
                 elif direction == Movement.RIGHT:
-                    castle_piece = self.find_piece((7, 0))
+                    curr_rook_pos = (7, 0)
                     expected_rook_pos = (5, 0)
-                    possible_castle = True                    
+                    possible_castle = True
+                    rook_steps = 2
         elif _king.get_piece_color() == Color.BLACK:
             if steps == 2:
                 if direction == Movement.LEFT:
-                    castle_piece = self.find_piece((0, 7))
-                    expected_rook_pos = (3, 7)
-                    possible_castle = True
-                elif direction == Movement.RIGHT:
-                    castle_piece = self.find_piece((7, 7))
+                    curr_rook_pos = (7, 7)
                     expected_rook_pos = (5, 7)
                     possible_castle = True
+                    rook_steps = 3
+                elif direction == Movement.RIGHT:
+                    curr_rook_pos = (0, 7)
+                    expected_rook_pos = (3, 7)
+                    possible_castle = True
+                    rook_steps = 2
 
-        if possible_castle:                   
+        if possible_castle:
+            castle_piece = self.find_piece(curr_rook_pos)
             if isinstance(castle_piece, Rook):
                 if castle_piece.is_first_move():
                     if castle_piece.get_piece_color() == _king.get_piece_color():
-                        castle_piece.move(expected_rook_pos)
-                        print("Castle allowed")
-                        return True
+                        if direction == Movement.LEFT:
+                            rook_move = Movement.RIGHT
+                        else:
+                            rook_move = Movement.LEFT
+                        move_possible, kill_piece = self.is_path_clear(castle_piece, curr_rook_pos, rook_move, rook_steps)
+                        if move_possible:
+                            castle_piece.move(expected_rook_pos)
+                            print(f"Castle allowed {expected_rook_pos}")
+                            return True
         return False
 
     def is_checked_king(self) -> bool:
