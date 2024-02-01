@@ -74,6 +74,9 @@ class Character(arcade.Sprite, ABC):
     def kill(self) -> None:
         self.alive = False
 
+    def get_name(self) -> str:
+        return self.name
+
     def revive(self, _position: Position) -> None:
         self.position = _position
         self.alive = True
@@ -88,3 +91,9 @@ class Character(arcade.Sprite, ABC):
     
     def __str__(self) -> str:
         return self.name
+    
+    def matches(self, other) -> bool:
+        return self.name == other.get_name() and self.get_grid_position() == other.get_grid_position()
+    
+    # def __eq__(self, other) -> bool:
+    #     return self.name == other.get_name() and self.get_grid_position() == other.get_grid_position()

@@ -24,6 +24,8 @@ class Chess(arcade.Window):
         self.characters.draw()
         if self.cell_highlight:
             self.cell_highlight.draw()
+        if self.king_check_highlight:
+            self.king_check_highlight.draw()
 
     def change_turn(self) -> None:
         if self.player_turn == Color.WHITE:
@@ -31,10 +33,17 @@ class Chess(arcade.Window):
         else:
             self.player_turn = Color.WHITE
 
-    def find_piece(self, _position: tuple):
+    def find_piece_by_position(self, _position: tuple):
         for character in self.characters:
             if character.get_grid_position() == _position:
                 return character
+        return None
+    
+    def find_piece_by_character(self, type, color):
+        for character in self.characters:
+            if isinstance(character, type):
+                if color == character.get_piece_color():
+                    return character
         return None
     
     def set_active_cell(self, _position: tuple):
@@ -45,11 +54,18 @@ class Chess(arcade.Window):
         else:
             self.cell_highlight = None
 
+    def set_king_check(self, _position: tuple):
+        if _position:
+            center_x, center_y = Position(_position[0], _position[1]).get_center_pixel()
+            self.king_check_highlight = arcade.create_rectangle_outline(center_x=center_x, center_y=center_y, width=Position.MULTIPLIER, height=Position.MULTIPLIER, color=arcade.color.RED, border_width=2)
+        else:
+            self.king_check_highlight = None
+
     def on_mouse_press(self, x, y, button, modifiers):
         click_pos = Position.interpret_position(x, y)
 
         if self.active_cell is None:
-            piece = self.find_piece(click_pos)
+            piece = self.find_piece_by_position(click_pos)
             if piece:
                 if piece.get_piece_color() == self.player_turn:
                     self.set_active_cell(click_pos)
@@ -57,14 +73,14 @@ class Chess(arcade.Window):
         else:
             active_character = None
 
-            new_selection = self.find_piece(click_pos)
+            new_selection = self.find_piece_by_position(click_pos)
             if new_selection:
                 if new_selection.get_piece_color() == self.player_turn:
                     self.set_active_cell(click_pos)
                     return
 
             #  Retrieve the active character
-            active_character = self.find_piece(self.active_cell)
+            active_character = self.find_piece_by_position(self.active_cell)
 
             # Calculate the direction and steps
             direction, steps = Movement.calculate_direction(self.active_cell, click_pos, active_character.is_inversed())
@@ -80,28 +96,33 @@ class Chess(arcade.Window):
                 # If the move is valid, move the piece
                 if move_possible:
                     allow_move = True
+                    king_move = False
                     if isinstance(active_character, Pawn):
-                        if active_character.is_first_move():
-                            allow_move = self.pawn_first_move(active_character, direction, steps)
-                        elif ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
+                        if ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
                             allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
+                        elif active_character.is_first_move():
+                            allow_move = self.pawn_first_move(active_character, direction, steps)
                         elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
                             allow_move = self.pawn_en_passant(active_character, direction, steps)
                         elif self.get_piece_rank(active_character) == 8:
                             allow_move = self.pawn_upgrade(active_character)
                     if isinstance(active_character, King):
+                        king_move = True
                         if steps == 2:
                             allow_move = self.king_castle(active_character, direction, steps)
                         if allow_move:
                             active_character.set_max_steps(1)
 
                     if allow_move:
-                        active_character.move(click_pos)
-                        if kill_piece:
-                            kill_piece.kill()
-                            self.characters.remove(kill_piece)
-                        self.set_active_cell(None)
-                        self.change_turn()
+                        print(self.active_cell)
+                        if not self.is_checked_king(self.player_turn, self.active_cell, click_pos, king_move):
+                            active_character.move(click_pos)
+                            if kill_piece:
+                                kill_piece.kill()
+                                self.characters.remove(kill_piece)
+                            self.set_active_cell(None)
+                            self.change_turn()
+                            self.is_checked_king(self.player_turn, None, None)
                     else:
                         print("Move Not Allowed")
                         self.set_active_cell(None)
@@ -112,15 +133,19 @@ class Chess(arcade.Window):
                 print("Move Not Valid")
                 self.set_active_cell(None)
 
-    def is_path_clear(self, piece, next_position: tuple, direction: str, steps: int):
+    def is_path_clear(self, piece, next_position: tuple, direction: str, steps: int, exclusion = None, inclusion = None):
         move_possible = False
         kill_piece = None
         for step in range(steps):
             next_position = Movement.predict_position(next_position, direction, 1, piece.is_inversed())
 
-            kill_piece = self.find_piece(next_position)
+            kill_piece = self.find_piece_by_position(next_position)
             if kill_piece:
-                if kill_piece.get_piece_color() == piece.get_piece_color():
+                if exclusion and (kill_piece.get_grid_position() == exclusion):
+                    move_possible = True
+                    kill_piece = None
+                    break
+                elif kill_piece.get_piece_color() == piece.get_piece_color():
                     # If it is the same color, the move is not possible
                     move_possible = False
                     kill_piece = None
@@ -136,13 +161,19 @@ class Chess(arcade.Window):
                     # If it is not the same color and steps do not match current pos, the move is possible
                     move_possible = True
                     break
+            elif inclusion:
+                if next_position == inclusion:
+                    move_possible = False
+                    kill_piece = None
+                    print("A Position in the way will be occupied")
+                    break
             else:
                 # If there is no piece in the way, the move is possible
                 move_possible = True
                 pass
 
             if next_position[0] < 0 or next_position[1] < 0:
-                print(f"Next Postition Fails: {next_position}")
+                return False, None
         return move_possible, kill_piece
 
     def pawn_upgrade(self, _pawn: Pawn) -> bool:                
@@ -169,7 +200,7 @@ class Chess(arcade.Window):
             if steps == 1:
                 # TODO: Check if previous move was a 2step opening move of a pawn
                 print("Pawn En Passant")
-                return True
+                return False
         return False                    
 
     def pawn_attack(self, _pawn: Pawn, direction: str, steps: int, kill_piece) -> bool:
@@ -213,7 +244,7 @@ class Chess(arcade.Window):
                     rook_steps = 2
 
         if possible_castle:
-            castle_piece = self.find_piece(curr_rook_pos)
+            castle_piece = self.find_piece_by_position(curr_rook_pos)
             if isinstance(castle_piece, Rook):
                 if castle_piece.is_first_move():
                     if castle_piece.get_piece_color() == _king.get_piece_color():
@@ -228,8 +259,37 @@ class Chess(arcade.Window):
                             return True
         return False
 
-    def is_checked_king(self) -> bool:
-        pass
+    def is_checked_king(self, color: Color, exclusion, inclusion, king_move = False) -> bool:
+            
+        king = self.find_piece_by_character(King, color)
+        if king_move:
+            king_pos = inclusion
+            inclusion = None
+        else:
+            king_pos = king.get_grid_position()
+        check_valid = False
+        self.checking_pieces[color] = []
+        for character in self.characters:
+            if character.get_piece_color() != color:
+                if not character.matches(king):
+                    direction, steps = Movement.calculate_direction(character.get_grid_position(), king_pos, color == Color.WHITE)
+                    if direction:
+                        if character.move_valid(direction, steps):
+                            if self.is_path_clear(character, character.get_grid_position(), direction, steps, exclusion, inclusion)[0]:
+                                self.checking_pieces[color].append(character.get_grid_position())
+
+        if inclusion in self.checking_pieces[color]:
+            self.checking_pieces[color].remove(inclusion)                    
+        if len(self.checking_pieces[color]) > 0:
+            print(self.checking_pieces)
+            if not inclusion:
+                self.set_king_check(king.get_grid_position())
+            string_color = "White" if color == Color.WHITE else "Black"
+            print(f"{string_color} King in check by {character.get_name()} at {character.get_grid_position()}")
+            return True
+        self.set_king_check(None)
+        return False
+
 
     def is_check_mate(self) -> bool:
         pass
@@ -257,6 +317,11 @@ class Chess(arcade.Window):
             color = swap_color(color)
 
         self.cell_highlight = None
+        self.king_check_highlight = None
+        self.checking_pieces = {
+            Color.WHITE: [],
+            Color.BLACK: []
+        }
 
     def init_characters(self):
         self.characters = arcade.SpriteList()
