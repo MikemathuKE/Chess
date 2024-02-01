@@ -120,7 +120,10 @@ class Chess(arcade.Window):
                         elif self.get_piece_rank(active_character) == 8:
                             allow_move = self.pawn_upgrade(active_character)
                     if isinstance(active_character, King):
-                        allow_move = self.king_castle(active_character)
+                        if steps == 2:
+                            allow_move = self.king_castle(active_character, direction, steps)
+                        if allow_move:
+                            active_character.set_max_steps(1)
 
                     if allow_move:
                         active_character.move(click_pos)
@@ -178,8 +181,38 @@ class Chess(arcade.Window):
         return False
 
 
-    def king_castle(self, _king: King) -> bool:
-        pass
+    def king_castle(self, _king: King, direction: str, steps: int) -> bool:
+        possible_castle = False
+        expected_rook_pos = None
+        if _king.get_piece_color() == Color.WHITE:
+            if steps == 2:
+                if direction == Movement.LEFT:
+                    castle_piece = self.find_piece((0, 0))
+                    expected_rook_pos = (3, 0)
+                    possible_castle = True
+                elif direction == Movement.RIGHT:
+                    castle_piece = self.find_piece((7, 0))
+                    expected_rook_pos = (5, 0)
+                    possible_castle = True                    
+        elif _king.get_piece_color() == Color.BLACK:
+            if steps == 2:
+                if direction == Movement.LEFT:
+                    castle_piece = self.find_piece((0, 7))
+                    expected_rook_pos = (3, 7)
+                    possible_castle = True
+                elif direction == Movement.RIGHT:
+                    castle_piece = self.find_piece((7, 7))
+                    expected_rook_pos = (5, 7)
+                    possible_castle = True
+
+        if possible_castle:                   
+            if isinstance(castle_piece, Rook):
+                if castle_piece.is_first_move():
+                    if castle_piece.get_piece_color() == _king.get_piece_color():
+                        castle_piece.move(expected_rook_pos)
+                        print("Castle allowed")
+                        return True
+        return False
 
     def is_checked_king(self) -> bool:
         pass
