@@ -59,7 +59,7 @@ class Character(arcade.Sprite, ABC):
         pass
 
     def move_valid(self, direction: str, steps: int) -> bool:
-        print(self.max_steps, self.direction_constraints)
+        # print(self.max_steps, self.direction_constraints)
         if steps <= self.max_steps:
             if direction in self.direction_constraints:
                 return True
@@ -80,6 +80,9 @@ class Character(arcade.Sprite, ABC):
     def revive(self, _position: Position) -> None:
         self.position = _position
         self.alive = True
+
+    def get_direction_constraints(self) -> list:
+        return self.direction_constraints
 
     def is_alive(self) -> bool:
         return self.alive

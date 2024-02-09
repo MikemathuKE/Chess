@@ -98,23 +98,16 @@ class Chess(arcade.Window):
                     allow_move = True
                     king_move = False
                     if isinstance(active_character, Pawn):
-                        if ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
-                            allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
-                        elif active_character.is_first_move():
-                            allow_move = self.pawn_first_move(active_character, direction, steps)
-                        elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
-                            allow_move = self.pawn_en_passant(active_character, direction, steps)
-                        elif self.get_piece_rank(active_character) == 8:
-                            allow_move = self.pawn_upgrade(active_character)
+                        allow_move = self.is_pawn_move_allowed(active_character, direction, steps, kill_piece)
                     if isinstance(active_character, King):
                         king_move = True
                         if steps == 2:
                             allow_move = self.king_castle(active_character, direction, steps)
-                        if allow_move:
-                            active_character.set_max_steps(1)
+                            if allow_move:
+                                active_character.set_max_steps(1)
 
                     if allow_move:
-                        print(self.active_cell)
+                        # print(self.active_cell)
                         if not self.is_checked_king(self.player_turn, self.active_cell, click_pos, king_move):
                             active_character.move(click_pos)
                             if kill_piece:
@@ -122,7 +115,13 @@ class Chess(arcade.Window):
                                 self.characters.remove(kill_piece)
                             self.set_active_cell(None)
                             self.change_turn()
-                            self.is_checked_king(self.player_turn, None, None)
+                            on_check = self.is_checked_king(self.player_turn, None, None, actual_check=True)
+
+                            if on_check:
+                                if self.is_check_mate(self.player_turn):
+                                    print("Game Over!")
+                            else:
+                                self.set_king_check(None)
                     else:
                         print("Move Not Allowed")
                         self.set_active_cell(None)
@@ -133,6 +132,19 @@ class Chess(arcade.Window):
                 print("Move Not Valid")
                 self.set_active_cell(None)
 
+    def is_pawn_move_allowed(self, active_character, direction, steps, kill_piece):
+        allow_move = True
+        if isinstance(active_character, Pawn):
+            if ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
+                allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
+            elif active_character.is_first_move():
+                allow_move = self.pawn_first_move(active_character, direction, steps)
+            elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+                allow_move = self.pawn_en_passant(active_character, direction, steps)
+            elif self.get_piece_rank(active_character) == 8:
+                allow_move = self.pawn_upgrade(active_character)
+        return allow_move
+
     def is_path_clear(self, piece, next_position: tuple, direction: str, steps: int, exclusion = None, inclusion = None):
         move_possible = False
         kill_piece = None
@@ -141,21 +153,21 @@ class Chess(arcade.Window):
 
             kill_piece = self.find_piece_by_position(next_position)
             if kill_piece:
-                if exclusion and (kill_piece.get_grid_position() == exclusion):
+                if exclusion and (kill_piece.get_grid_position() in exclusion):
                     move_possible = True
                     kill_piece = None
                     break
                 elif kill_piece.get_piece_color() == piece.get_piece_color():
                     # If it is the same color, the move is not possible
+                    # print("Same color piece in the way ", kill_piece.get_name())
                     move_possible = False
                     kill_piece = None
-                    print("Same color piece in the way")
                     break
                 elif step != steps - 1:
                     # If steps do not match current pos, the move is not possible
                     move_possible = False
                     kill_piece = None
-                    print("Another piece is blocking the way")
+                    # print("Another piece is blocking the way")
                     break
                 else:
                     # If it is not the same color and steps do not match current pos, the move is possible
@@ -165,7 +177,7 @@ class Chess(arcade.Window):
                 if next_position == inclusion:
                     move_possible = False
                     kill_piece = None
-                    print("A Position in the way will be occupied")
+                    # print("A Position in the way will be occupied")
                     break
             else:
                 # If there is no piece in the way, the move is possible
@@ -173,6 +185,8 @@ class Chess(arcade.Window):
                 pass
 
             if next_position[0] < 0 or next_position[1] < 0:
+                return False, None
+            if next_position[0] >= 8 or next_position[1] >= 8:
                 return False, None
         return move_possible, kill_piece
 
@@ -258,9 +272,44 @@ class Chess(arcade.Window):
                             print(f"Castle allowed {expected_rook_pos}")
                             return True
         return False
+    
+    def is_check_mate(self, color: Color) -> bool:
+        king = self.find_piece_by_character(King, color)
+        print("Checking for Check Mate")
 
-    def is_checked_king(self, color: Color, exclusion, inclusion, king_move = False) -> bool:
-            
+        no_fix = True
+        for movt in king.get_direction_constraints():
+            expected_king_pos = Movement.predict_position(king.get_grid_position(), movt, 1, king.is_inversed())
+            move_possible, kill_piece = self.is_path_clear(king, king.get_grid_position(), movt, 1)
+            if move_possible:
+                print(f"Checking for King move from {king.get_grid_position()} to {expected_king_pos}")
+                if not self.is_checked_king(color, king.get_grid_position(), expected_king_pos, king_move=True):
+                    no_fix = False
+                    print(f"Expected King Pos freeing from check: {expected_king_pos}")
+                    break
+
+        if no_fix:
+            print("King Cannot Move")
+            for character in self.characters:
+                if character.get_piece_color() != color:
+                    for movt in character.get_direction_constraints():
+                        for steps in range(1, character.get_max_steps()+1):
+                            expected_character_pos = Movement.predict_position(character.get_grid_position(), movt, steps, character.is_inversed())
+                            move_possible, kill_piece = self.is_path_clear(character, character.get_grid_position(), movt, steps, [character.get_grid_position()], expected_character_pos)
+                            if move_possible:
+                                allow_move = True
+                                if isinstance(character, Pawn):
+                                    allow_move = self.is_pawn_move_allowed(character, movt, steps, kill_piece)
+                                if allow_move:
+                                    if not self.is_checked_king(color, exclusion=character.get_grid_position(), inclusion=expected_character_pos, moved_char=character):
+                                        no_fix = False
+
+        if no_fix:
+            print(f"Check Mate on {color}")
+        
+        return no_fix
+
+    def is_checked_king(self, color: Color, exclusion: tuple, inclusion: tuple, king_move = False, moved_char = None, actual_check=False) -> bool:            
         king = self.find_piece_by_character(King, color)
         if king_move:
             king_pos = inclusion
@@ -270,27 +319,39 @@ class Chess(arcade.Window):
         self.checking_pieces[color] = []
         for character in self.characters:
             if character.get_piece_color() != color:
-                if not character.matches(king):
-                    direction, steps = Movement.calculate_direction(character.get_grid_position(), king_pos, color == Color.WHITE)
-                    if direction:
-                        if character.move_valid(direction, steps):
-                            if self.is_path_clear(character, character.get_grid_position(), direction, steps, exclusion, inclusion)[0]:
-                                self.checking_pieces[color].append(character.get_grid_position())
+                # if (king_move and (character.get_grid_position() == inclusion)) or (not king_move):
+                    if not character.matches(king):
+                        if moved_char:
+                            if character.matches(moved_char):
+                                direction, steps = Movement.calculate_direction(moved_char.get_grid_position(), king_pos, color == Color.WHITE)
+                            else:
+                                direction, steps = Movement.calculate_direction(character.get_grid_position(), king_pos, color == Color.WHITE)
+                        else:
+                            direction, steps = Movement.calculate_direction(character.get_grid_position(), king_pos, color == Color.WHITE)
+                        print(f"Checking Piece {character.get_name()} at {character.get_grid_position()} moving to ", Movement.predict_position(character.get_grid_position(), direction, steps))
 
+                        if direction:
+                            if character.move_valid(direction, steps):
+                                print(direction, steps)
+                                if king_move:
+                                    path_clear = self.is_path_clear(character, character.get_grid_position(), direction, steps, [exclusion, king_pos])[0]
+                                else:
+                                    path_clear = self.is_path_clear(character, character.get_grid_position(), direction, steps, [exclusion], inclusion)[0]
+
+                                if path_clear:
+                                    self.checking_pieces[color].append(character.get_grid_position())
+                                    print(f"Checking piece {character.get_name()} at {character.get_grid_position()}")
+
+        print(self.checking_pieces[color])
         if inclusion in self.checking_pieces[color]:
             self.checking_pieces[color].remove(inclusion)                    
         if len(self.checking_pieces[color]) > 0:
-            if not inclusion:
+            if actual_check:
                 self.set_king_check(king.get_grid_position())
             string_color = "White" if color == Color.WHITE else "Black"
             print(f"Pieces checking {string_color} king", self.checking_pieces)
             return True
-        self.set_king_check(None)
         return False
-
-
-    def is_check_mate(self) -> bool:
-        pass
 
     def init_board(self):
         self.set_active_cell(None)
