@@ -7,16 +7,75 @@ from characters.Knight import Knight
 from characters.Rook import Rook
 from characters.Pawn import Pawn
 
-class Chess(arcade.Window):
-    def __init__(self):
-        super().__init__(900, 900, "Chess")
-        arcade.set_background_color(arcade.color.AIR_FORCE_BLUE)
+class PawnSwitch(arcade.View):
+    def __init__(self, window, game_view, color: Color, upgrade_piece: Pawn):
+        self.window = window
+        self.color = color
+        self.upgrade_piece = upgrade_piece
+        self.game_view = game_view
+        super().__init__(self.window)
+
+    def on_draw(self):
+        self.background.draw()
+        self.text.draw()
+
+        light_bg = arcade.color.BLUE_GRAY
+        dark_bg = arcade.color.BLUE_SAPPHIRE
+        
+        def swap_color(color: str) -> str:
+            if color == light_bg:
+                color = dark_bg
+            elif color == dark_bg:
+                color = light_bg
+            return color
+
+        color = light_bg
+        for i in range(2,6):
+            center_x, center_y = Position(i, 3).get_center_pixel()
+            cell_highlight = arcade.create_rectangle_filled(center_x=center_x, center_y=center_y, width=Position.MULTIPLIER, height=Position.MULTIPLIER, color=color)
+            cell_highlight.draw()
+            color = swap_color(color)
+
+        self.rook.draw()
+        self.queen.draw()
+        self.knight.draw()
+        self.bishop.draw()
+
+    def on_show_view(self):
+        self.background = arcade.create_rectangle_filled(center_x=self.window.width/2, center_y=self.window.height/2, width=self.window.width, height=self.window.height, color=arcade.color.AIR_FORCE_BLUE)
+        self.text = arcade.create_text_sprite("Choose Piece to Upgrade To: ", self.window.width/3, self.window.height*2/3, color=arcade.color.WHITE_SMOKE, font_size=20)
+
+        color_str = "white" if self.color == Color.WHITE else "black"
+        self.rook = Rook(Position(2, 3), Color.WHITE, f"{color_str}_rook.png")
+        self.queen = Queen(Position(3, 3), Color.WHITE, f"{color_str}_queen.png")
+        self.knight = Knight(Position(4, 3), Color.WHITE, f"{color_str}_knight.png")
+        self.bishop = Bishop(Position(5, 3), Color.WHITE, f"{color_str}_bishop.png")
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        pos = Position.interpret_position(x, y)
+        if pos == self.rook.get_grid_position():
+            self.game_view.upgrade_pawn(self.upgrade_piece, self.rook)
+        elif pos == self.queen.get_grid_position():
+            self.game_view.upgrade_pawn(self.upgrade_piece, self.queen)
+        elif pos == self.knight.get_grid_position():
+            self.game_view.upgrade_pawn(self.upgrade_piece, self.knight)
+        elif pos == self.bishop.get_grid_position():
+            self.game_view.upgrade_pawn(self.upgrade_piece, self.bishop)
+
+        self.window.show_view(self.game_view)
+        
+
+class GameView(arcade.View):
+    def __init__(self, window: arcade.Window = None):
+        super().__init__(window)
+        self.window = window
 
     def setup(self):
         self.asset_dir = "./assets"
         self.init_board()
         self.init_characters()
         self.player_turn = Color.WHITE
+        self.killed_pieces = {}
 
     def on_draw(self):
         self.clear()
@@ -61,7 +120,7 @@ class Chess(arcade.Window):
         else:
             self.king_check_highlight = None
 
-    def on_mouse_press(self, x, y, button, modifiers):
+    def on_mouse_press(self, x, y, button, modifiers):        
         click_pos = Position.interpret_position(x, y)
 
         if self.active_cell is None:
@@ -115,34 +174,42 @@ class Chess(arcade.Window):
                                 self.characters.remove(kill_piece)
                             self.set_active_cell(None)
                             self.change_turn()
-                            on_check = self.is_checked_king(self.player_turn, None, None, actual_check=True)
 
-                            if on_check:
-                                if self.is_check_mate(self.player_turn):
-                                    print("Game Over!")
-                            else:
-                                self.set_king_check(None)
+                            self.king_check_logic()
+                            
                     else:
-                        print("Move Not Allowed")
+                        # print("Move Not Allowed")
                         self.set_active_cell(None)
                 else:
-                    print("Move Not Possible")
-                self.set_active_cell(None)
+                    # print("Move Not Possible")
+                    self.set_active_cell(None)
             else:
-                print("Move Not Valid")
+                # print("Move Not Valid")
                 self.set_active_cell(None)
+
+    def king_check_logic(self) -> bool:
+        on_check = self.is_checked_king(self.player_turn, None, None, actual_check=True)
+        print(on_check)
+
+        if on_check:
+            if self.is_check_mate(self.player_turn):
+                print("Game Over!")
+        else:
+            self.set_king_check(None)
 
     def is_pawn_move_allowed(self, active_character, direction, steps, kill_piece):
         allow_move = True
         if isinstance(active_character, Pawn):
+            print(self.get_piece_rank(active_character))
             if ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
                 allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
             elif active_character.is_first_move():
                 allow_move = self.pawn_first_move(active_character, direction, steps)
             elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
                 allow_move = self.pawn_en_passant(active_character, direction, steps)
-            elif self.get_piece_rank(active_character) == 8:
-                allow_move = self.pawn_upgrade(active_character)
+            elif self.get_piece_rank(active_character) == 7:
+                pawn_view = PawnSwitch(self.window, self, self.player_turn, active_character)
+                self.window.show_view(pawn_view)
         return allow_move
 
     def is_path_clear(self, piece, next_position: tuple, direction: str, steps: int, exclusion = None, inclusion = None):
@@ -190,17 +257,24 @@ class Chess(arcade.Window):
                 return False, None
         return move_possible, kill_piece
 
-    def pawn_upgrade(self, _pawn: Pawn) -> bool:                
+    def is_pawn_upgrade(self, _pawn: Pawn) -> bool:
         return False
+
+    def upgrade_pawn(self, _pawn: Pawn, new_piece) -> None:
+        position = _pawn.get_grid_position()
+        new_piece.set_grid_position(Position(position[0], position[1]))
+        self.characters.remove(_pawn)
+        self.characters.append(new_piece)
+        self.king_check_logic()
     
     def pawn_first_move(self, _pawn: Pawn, direction: str, steps: int) -> bool:
         if steps <= 2:
             if direction == Movement.FORWARD:
                 if _pawn.is_first_move():
                     _pawn.set_max_steps(1)
-                    print("Taking Pawn First Steps")
+                    # print("Taking Pawn First Steps")
                     return True
-        print("Not Taking Pawn First Steps")
+        # print("Not Taking Pawn First Steps")
         return False
     
     def get_piece_rank(self, _piece) -> int:
@@ -213,7 +287,7 @@ class Chess(arcade.Window):
         if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
             if steps == 1:
                 # TODO: Check if previous move was a 2step opening move of a pawn
-                print("Pawn En Passant")
+                # print("Pawn En Passant")
                 return False
         return False                    
 
@@ -223,9 +297,9 @@ class Chess(arcade.Window):
                 if kill_piece:
                     if _pawn.is_first_move():
                         _pawn.set_max_steps(1)
-                    print("Pawn Taking Another Piece")
+                    # print("Pawn Taking Another Piece")
                     return True
-        print("Pawn Not Attacking")
+        # print("Pawn Not Attacking")
         return False
 
 
@@ -269,27 +343,27 @@ class Chess(arcade.Window):
                         move_possible, kill_piece = self.is_path_clear(castle_piece, curr_rook_pos, rook_move, rook_steps)
                         if move_possible:
                             castle_piece.move(expected_rook_pos)
-                            print(f"Castle allowed {expected_rook_pos}")
+                            # print(f"Castle allowed {expected_rook_pos}")
                             return True
         return False
     
     def is_check_mate(self, color: Color) -> bool:
         king = self.find_piece_by_character(King, color)
-        print("Checking for Check Mate")
+        # print("Checking for Check Mate")
 
         no_fix = True
         for movt in king.get_direction_constraints():
             expected_king_pos = Movement.predict_position(king.get_grid_position(), movt, 1, king.is_inversed())
             move_possible, kill_piece = self.is_path_clear(king, king.get_grid_position(), movt, 1)
             if move_possible:
-                print(f"Checking for King move from {king.get_grid_position()} to {expected_king_pos}")
+                # print(f"Checking for King move from {king.get_grid_position()} to {expected_king_pos}")
                 if not self.is_checked_king(color, king.get_grid_position(), expected_king_pos, king_move=True):
                     no_fix = False
-                    print(f"Expected King Pos freeing from check: {expected_king_pos}")
+                    # print(f"Expected King Pos freeing from check: {expected_king_pos}")
                     break
 
         if no_fix:
-            print("King Cannot Move")
+            # print("King Cannot Move")
             for character in self.characters:
                 if character.get_piece_color() != color:
                     for movt in character.get_direction_constraints():
@@ -328,7 +402,7 @@ class Chess(arcade.Window):
                                 direction, steps = Movement.calculate_direction(character.get_grid_position(), king_pos, color == Color.WHITE)
                         else:
                             direction, steps = Movement.calculate_direction(character.get_grid_position(), king_pos, color == Color.WHITE)
-                        print(f"Checking Piece {character.get_name()} at {character.get_grid_position()} moving to ", Movement.predict_position(character.get_grid_position(), direction, steps))
+                        # print(f"Checking Piece {character.get_name()} at {character.get_grid_position()} moving to ", Movement.predict_position(character.get_grid_position(), direction, steps))
 
                         if direction:
                             if character.move_valid(direction, steps):
@@ -340,16 +414,16 @@ class Chess(arcade.Window):
 
                                 if path_clear:
                                     self.checking_pieces[color].append(character.get_grid_position())
-                                    print(f"Checking piece {character.get_name()} at {character.get_grid_position()}")
+                                    # print(f"Checking piece {character.get_name()} at {character.get_grid_position()}")
 
-        print(self.checking_pieces[color])
+        # print(self.checking_pieces[color])
         if inclusion in self.checking_pieces[color]:
             self.checking_pieces[color].remove(inclusion)                    
         if len(self.checking_pieces[color]) > 0:
             if actual_check:
                 self.set_king_check(king.get_grid_position())
             string_color = "White" if color == Color.WHITE else "Black"
-            print(f"Pieces checking {string_color} king", self.checking_pieces)
+            # print(f"Pieces checking {string_color} king", self.checking_pieces)
             return True
         return False
 
@@ -458,3 +532,13 @@ class Chess(arcade.Window):
         self.characters.append(self.black_pawn_G)
         self.black_pawn_H = Pawn(Position(7, 6), Color.BLACK, "black_pawn.png")
         self.characters.append(self.black_pawn_H)
+
+class Chess(arcade.Window):
+    def __init__(self):
+        super().__init__(900, 900, "Chess")
+        arcade.set_background_color(arcade.color.AIR_FORCE_BLUE)
+        gameview = GameView(self)
+        gameview.setup()
+        self.show_view(gameview)
+
+    
