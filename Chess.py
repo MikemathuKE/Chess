@@ -6,6 +6,7 @@ from characters.Bishop import Bishop
 from characters.Knight import Knight
 from characters.Rook import Rook
 from characters.Pawn import Pawn
+from pyglet.image import load as pyglet_load
 
 class PawnSwitch(arcade.View):
     def __init__(self, window, game_view, color: Color, upgrade_piece: Pawn):
@@ -628,5 +629,4 @@ class Chess(arcade.Window):
         gameview = GameView(self)
         gameview.setup()
         self.show_view(gameview)
-
-    
+        self.set_icon(pyglet_load("./assets/Icon.ico"))

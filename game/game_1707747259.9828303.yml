@@ -46,7 +46,12 @@ black_pawn:
 - color: *id001
   position: !!python/tuple
   - 3
+  - 6
+  texture: black_pawn.png
+- color: *id001
+  position: !!python/tuple
   - 4
+  - 6
   texture: black_pawn.png
 - color: *id001
   position: !!python/tuple
@@ -66,8 +71,8 @@ black_pawn:
 black_queen:
 - color: *id001
   position: !!python/tuple
-  - 6
-  - 4
+  - 3
+  - 7
   texture: black_queen.png
 black_rook:
 - color: *id001
@@ -80,93 +85,17 @@ black_rook:
   - 7
   - 7
   texture: black_rook.png
-history:
-- _from: !!python/tuple
-  - 3
-  - 1
-  _to: !!python/tuple
-  - 3
-  - 3
-  direction: N
-  piece: white_pawn
-  steps: 2
-- _from: !!python/tuple
-  - 3
-  - 6
-  _to: !!python/tuple
-  - 3
-  - 5
-  direction: N
-  piece: black_pawn
-  steps: 1
-- _from: !!python/tuple
-  - 3
-  - 3
-  _to: !!python/tuple
-  - 3
-  - 4
-  direction: N
-  piece: white_pawn
-  steps: 1
-- _from: !!python/tuple
-  - 4
-  - 6
-  _to: !!python/tuple
-  - 4
-  - 4
-  direction: N
-  piece: black_pawn
-  steps: 2
-- _from: !!python/tuple
-  - 3
-  - 4
-  _to: !!python/tuple
-  - 4
-  - 5
-  direction: NE
-  piece: white_pawn
-  steps: 1
-- _from: !!python/tuple
-  - 3
-  - 5
-  _to: !!python/tuple
-  - 3
-  - 4
-  direction: N
-  piece: black_pawn
-  steps: 1
-- _from: !!python/tuple
+history: []
+killed_pieces: {}
+player_turn: &id002 !!python/object/apply:utils.utils.Color
+- 1
+white_bishop:
+- color: *id002
+  position: !!python/tuple
   - 2
   - 0
-  _to: !!python/tuple
-  - 6
-  - 4
-  direction: NE
-  piece: white_bishop
-  steps: 4
-- _from: !!python/tuple
-  - 3
-  - 7
-  _to: !!python/tuple
-  - 6
-  - 4
-  direction: NW
-  piece: black_queen
-  steps: 3
-- _from: !!python/tuple
-  - 4
-  - 5
-  _to: !!python/tuple
-  - 4
-  - 6
-  direction: N
-  piece: white_pawn
-  steps: 1
-killed_pieces: {}
-player_turn: *id001
-white_bishop:
-- color: &id002 !!python/object/apply:utils.utils.Color
-  - 1
+  texture: white_bishop.png
+- color: *id002
   position: !!python/tuple
   - 5
   - 0
@@ -206,8 +135,8 @@ white_pawn:
   texture: white_pawn.png
 - color: *id002
   position: !!python/tuple
-  - 4
-  - 6
+  - 3
+  - 1
   texture: white_pawn.png
 - color: *id002
   position: !!python/tuple
