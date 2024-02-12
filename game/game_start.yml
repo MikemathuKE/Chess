@@ -85,9 +85,12 @@ black_rook:
   - 7
   - 7
   texture: black_rook.png
+history: []
+killed_pieces: {}
+player_turn: &id002 !!python/object/apply:utils.utils.Color
+- 1
 white_bishop:
-- color: &id002 !!python/object/apply:utils.utils.Color
-  - 1
+- color: *id002
   position: !!python/tuple
   - 2
   - 0

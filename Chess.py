@@ -1,4 +1,4 @@
-import arcade, yaml
+import arcade, yaml, time
 from utils.utils import *
 from characters.King import King
 from characters.Queen import Queen
@@ -72,10 +72,10 @@ class GameView(arcade.View):
 
     def setup(self):
         self.asset_dir = "./assets"
-        self.init_board()
-        self.init_characters()
         self.player_turn = Color.WHITE
         self.killed_pieces = {}
+        self.init_board()
+        self.init_characters()
 
     def on_draw(self):
         self.clear()
@@ -157,7 +157,7 @@ class GameView(arcade.View):
                     allow_move = True
                     king_move = False
                     if isinstance(active_character, Pawn):
-                        allow_move = self.is_pawn_move_allowed(active_character, direction, steps, kill_piece)
+                        allow_move, kill_piece = self.is_pawn_move_allowed(active_character, direction, steps, kill_piece)
                     if isinstance(active_character, King):
                         king_move = True
                         if steps == 2:
@@ -168,13 +168,13 @@ class GameView(arcade.View):
                     if allow_move:
                         # print(self.active_cell)
                         if not self.is_checked_king(self.player_turn, self.active_cell, click_pos, king_move):
+                            self.add_history(active_character, active_character.get_grid_position(), click_pos, steps, direction)
                             active_character.move(click_pos)
                             if kill_piece:
                                 kill_piece.kill()
                                 self.characters.remove(kill_piece)
                             self.set_active_cell(None)
                             self.change_turn()
-
                             self.king_check_logic()
                             
                     else:
@@ -186,10 +186,11 @@ class GameView(arcade.View):
             else:
                 # print("Move Not Valid")
                 self.set_active_cell(None)
+        self.serialize_game(self.gametimestamp)
 
     def king_check_logic(self) -> bool:
         on_check = self.is_checked_king(self.player_turn, None, None, actual_check=True)
-        print(on_check)
+        # print(on_check)
 
         if on_check:
             if self.is_check_mate(self.player_turn):
@@ -200,17 +201,24 @@ class GameView(arcade.View):
     def is_pawn_move_allowed(self, active_character, direction, steps, kill_piece):
         allow_move = True
         if isinstance(active_character, Pawn):
-            print(self.get_piece_rank(active_character))
-            if ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
+            # print(self.get_piece_rank(active_character))
+            if ((direction == Movement.FORWARD) and kill_piece):
+                allow_move = False
+                kill_piece = None
+            elif ((direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT)) and kill_piece:
                 allow_move = self.pawn_attack(active_character, direction, steps, kill_piece)
             elif active_character.is_first_move():
                 allow_move = self.pawn_first_move(active_character, direction, steps)
+                kill_piece = None            
             elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
-                allow_move = self.pawn_en_passant(active_character, direction, steps)
-            elif self.get_piece_rank(active_character) == 7:
+                print("Checking for En Passant")
+                allow_move, kill_piece_pos = self.pawn_en_passant(active_character, direction, steps)
+                kill_piece = self.find_piece_by_position(kill_piece_pos)
+            
+            if self.get_piece_rank(active_character) == 7:
                 pawn_view = PawnSwitch(self.window, self, self.player_turn, active_character)
                 self.window.show_view(pawn_view)
-        return allow_move
+        return allow_move, kill_piece
 
     def is_path_clear(self, piece, next_position: tuple, direction: str, steps: int, exclusion = None, inclusion = None):
         move_possible = False
@@ -257,15 +265,13 @@ class GameView(arcade.View):
                 return False, None
         return move_possible, kill_piece
 
-    def is_pawn_upgrade(self, _pawn: Pawn) -> bool:
-        return False
-
     def upgrade_pawn(self, _pawn: Pawn, new_piece) -> None:
         position = _pawn.get_grid_position()
         new_piece.set_grid_position(Position(position[0], position[1]))
         self.characters.remove(_pawn)
         self.characters.append(new_piece)
         self.king_check_logic()
+        self.serialize_game(self.gametimestamp)
     
     def pawn_first_move(self, _pawn: Pawn, direction: str, steps: int) -> bool:
         if steps <= 2:
@@ -284,12 +290,17 @@ class GameView(arcade.View):
             return 8 - _piece.get_grid_position()[1]
     
     def pawn_en_passant(self, _pawn: Pawn, direction: str, steps: int) -> bool:
-        if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
-            if steps == 1:
-                # TODO: Check if previous move was a 2step opening move of a pawn
-                # print("Pawn En Passant")
-                return False
-        return False                    
+        if isinstance(_pawn, Pawn):
+            if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
+                if steps == 1:
+                    last_move = self.history[-1]
+                    if "_pawn" in last_move["piece"]:
+                        if last_move["piece"] != _pawn.get_name():
+                            if last_move["steps"] == 2:
+                                pawn_pos = _pawn.get_grid_position()
+                                if (last_move["_to"][1] == pawn_pos[1]) and ((last_move["_to"][0] == pawn_pos[0]-1) or (last_move["_to"][0] == pawn_pos[0]+1)):
+                                    return True, last_move["_to"]
+        return False, None                 
 
     def pawn_attack(self, _pawn: Pawn, direction: str, steps: int, kill_piece) -> bool:
         if (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
@@ -373,13 +384,14 @@ class GameView(arcade.View):
                             if move_possible:
                                 allow_move = True
                                 if isinstance(character, Pawn):
-                                    allow_move = self.is_pawn_move_allowed(character, movt, steps, kill_piece)
+                                    allow_move, kill_piece = self.is_pawn_move_allowed(character, movt, steps, kill_piece)
                                 if allow_move:
                                     if not self.is_checked_king(color, exclusion=character.get_grid_position(), inclusion=expected_character_pos, moved_char=character):
                                         no_fix = False
 
         if no_fix:
             print(f"Check Mate on {color}")
+            pass
         
         return no_fix
 
@@ -406,7 +418,7 @@ class GameView(arcade.View):
 
                         if direction:
                             if character.move_valid(direction, steps):
-                                print(direction, steps)
+                                # print(direction, steps)
                                 if king_move:
                                     path_clear = self.is_path_clear(character, character.get_grid_position(), direction, steps, [exclusion, king_pos])[0]
                                 else:
@@ -459,85 +471,125 @@ class GameView(arcade.View):
     def init_characters(self):
         self.characters = arcade.SpriteList()
 
-        self.white_rook_A = Rook(Position(0, 0), Color.WHITE, "white_rook.png")
-        self.characters.append(self.white_rook_A)
-        self.white_rook_B = Rook(Position(7, 0), Color.WHITE, "white_rook.png")
-        self.characters.append(self.white_rook_B)
+        # self.white_rook_A = Rook(Position(0, 0), Color.WHITE, "white_rook.png")
+        # self.characters.append(self.white_rook_A)
+        # self.white_rook_B = Rook(Position(7, 0), Color.WHITE, "white_rook.png")
+        # self.characters.append(self.white_rook_B)
 
-        self.black_rook_A = Rook(Position(0, 7), Color.BLACK, "black_rook.png")
-        self.characters.append(self.black_rook_A)
-        self.black_rook_B = Rook(Position(7, 7), Color.BLACK, "black_rook.png")
-        self.characters.append(self.black_rook_B)
+        # self.black_rook_A = Rook(Position(0, 7), Color.BLACK, "black_rook.png")
+        # self.characters.append(self.black_rook_A)
+        # self.black_rook_B = Rook(Position(7, 7), Color.BLACK, "black_rook.png")
+        # self.characters.append(self.black_rook_B)
 
-        self.white_knight_A = Knight(Position(1, 0), Color.WHITE, "white_knight.png")
-        self.characters.append(self.white_knight_A)
-        self.white_knight_B = Knight(Position(6, 0), Color.WHITE, "white_knight.png")
-        self.characters.append(self.white_knight_B)
+        # self.white_knight_A = Knight(Position(1, 0), Color.WHITE, "white_knight.png")
+        # self.characters.append(self.white_knight_A)
+        # self.white_knight_B = Knight(Position(6, 0), Color.WHITE, "white_knight.png")
+        # self.characters.append(self.white_knight_B)
 
-        self.black_knight_A = Knight(Position(1, 7), Color.BLACK, "black_knight.png")
-        self.characters.append(self.black_knight_A)
-        self.black_knight_B = Knight(Position(6, 7), Color.BLACK, "black_knight.png")
-        self.characters.append(self.black_knight_B)
+        # self.black_knight_A = Knight(Position(1, 7), Color.BLACK, "black_knight.png")
+        # self.characters.append(self.black_knight_A)
+        # self.black_knight_B = Knight(Position(6, 7), Color.BLACK, "black_knight.png")
+        # self.characters.append(self.black_knight_B)
 
-        self.white_bishop_A = Bishop(Position(2, 0), Color.WHITE, "white_bishop.png")
-        self.characters.append(self.white_bishop_A)
-        self.white_bishop_B = Bishop(Position(5, 0), Color.WHITE, "white_bishop.png")
-        self.characters.append(self.white_bishop_B)
+        # self.white_bishop_A = Bishop(Position(2, 0), Color.WHITE, "white_bishop.png")
+        # self.characters.append(self.white_bishop_A)
+        # self.white_bishop_B = Bishop(Position(5, 0), Color.WHITE, "white_bishop.png")
+        # self.characters.append(self.white_bishop_B)
 
-        self.black_bishop_A = Bishop(Position(2, 7), Color.BLACK, "black_bishop.png")
-        self.characters.append(self.black_bishop_A)
-        self.black_bishop_B = Bishop(Position(5, 7), Color.BLACK, "black_bishop.png")
-        self.characters.append(self.black_bishop_B)
+        # self.black_bishop_A = Bishop(Position(2, 7), Color.BLACK, "black_bishop.png")
+        # self.characters.append(self.black_bishop_A)
+        # self.black_bishop_B = Bishop(Position(5, 7), Color.BLACK, "black_bishop.png")
+        # self.characters.append(self.black_bishop_B)
 
-        self.white_queen = Queen(Position(3, 0), Color.WHITE, "white_queen.png")
-        self.characters.append(self.white_queen)
-        self.white_king  = King(Position(4, 0), Color.WHITE, "white_king.png")
-        self.characters.append(self.white_king)
+        # self.white_queen = Queen(Position(3, 0), Color.WHITE, "white_queen.png")
+        # self.characters.append(self.white_queen)
+        # self.white_king  = King(Position(4, 0), Color.WHITE, "white_king.png")
+        # self.characters.append(self.white_king)
 
-        self.black_queen = Queen(Position(3, 7), Color.BLACK, "black_queen.png")
-        self.characters.append(self.black_queen)
-        self.black_king  = King(Position(4, 7), Color.BLACK, "black_king.png")
-        self.characters.append(self.black_king)
+        # self.black_queen = Queen(Position(3, 7), Color.BLACK, "black_queen.png")
+        # self.characters.append(self.black_queen)
+        # self.black_king  = King(Position(4, 7), Color.BLACK, "black_king.png")
+        # self.characters.append(self.black_king)
 
-        self.white_pawn_A = Pawn(Position(0, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_A)
-        self.white_pawn_B = Pawn(Position(1, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_B)
-        self.white_pawn_C = Pawn(Position(2, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_C)
-        self.white_pawn_D = Pawn(Position(3, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_D)
-        self.white_pawn_E = Pawn(Position(4, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_E)
-        self.white_pawn_F = Pawn(Position(5, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_F)
-        self.white_pawn_G = Pawn(Position(6, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_G)
-        self.white_pawn_H = Pawn(Position(7, 1), Color.WHITE, "white_pawn.png")
-        self.characters.append(self.white_pawn_H)
+        # self.white_pawn_A = Pawn(Position(0, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_A)
+        # self.white_pawn_B = Pawn(Position(1, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_B)
+        # self.white_pawn_C = Pawn(Position(2, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_C)
+        # self.white_pawn_D = Pawn(Position(3, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_D)
+        # self.white_pawn_E = Pawn(Position(4, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_E)
+        # self.white_pawn_F = Pawn(Position(5, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_F)
+        # self.white_pawn_G = Pawn(Position(6, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_G)
+        # self.white_pawn_H = Pawn(Position(7, 1), Color.WHITE, "white_pawn.png")
+        # self.characters.append(self.white_pawn_H)
 
-        self.black_pawn_A = Pawn(Position(0, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_A)
-        self.black_pawn_B = Pawn(Position(1, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_B)
-        self.black_pawn_C = Pawn(Position(2, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_C)
-        self.black_pawn_D = Pawn(Position(3, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_D)
-        self.black_pawn_E = Pawn(Position(4, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_E)
-        self.black_pawn_F = Pawn(Position(5, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_F)
-        self.black_pawn_G = Pawn(Position(6, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_G)
-        self.black_pawn_H = Pawn(Position(7, 6), Color.BLACK, "black_pawn.png")
-        self.characters.append(self.black_pawn_H)
+        # self.black_pawn_A = Pawn(Position(0, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_A)
+        # self.black_pawn_B = Pawn(Position(1, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_B)
+        # self.black_pawn_C = Pawn(Position(2, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_C)
+        # self.black_pawn_D = Pawn(Position(3, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_D)
+        # self.black_pawn_E = Pawn(Position(4, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_E)
+        # self.black_pawn_F = Pawn(Position(5, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_F)
+        # self.black_pawn_G = Pawn(Position(6, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_G)
+        # self.black_pawn_H = Pawn(Position(7, 6), Color.BLACK, "black_pawn.png")
+        # self.characters.append(self.black_pawn_H)piece["position"][0], piece["position"][1]
 
-        self.serialize_game()
+        self.history = []
+        game_data = self.deserialize_game("game_start")
+        for key in game_data.keys():
+            if key == "player_turn":
+                self.player_turn = game_data[key]
+            elif key == "killed_pieces":
+                self.killed_pieces = game_data[key]
+            elif key == "history":
+                self.history = game_data[key]
+            elif "_rook" in key:
+                for piece in game_data[key]:
+                    self.characters.append(Rook(Position(piece["position"][0], piece["position"][1]), piece["color"], piece["texture"]))
+            elif "_knight" in key:
+                for piece in game_data[key]:
+                    self.characters.append(Knight(Position(piece["position"][0], piece["position"][1]), piece["color"], piece["texture"]))
+            elif "_bishop" in key:
+                for piece in game_data[key]:
+                    self.characters.append(Bishop(Position(piece["position"][0], piece["position"][1]), piece["color"], piece["texture"]))
+            elif "_queen" in key:
+                for piece in game_data[key]:
+                    self.characters.append(Queen(Position(piece["position"][0], piece["position"][1]), piece["color"], piece["texture"]))
+            elif "_king" in key:
+                for piece in game_data[key]:
+                    self.characters.append(King(Position(piece["position"][0], piece["position"][1]), piece["color"], piece["texture"]))
+            elif "_pawn" in key:
+                for piece in game_data[key]:
+                    self.characters.append(Pawn(Position(piece["position"][0], piece["position"][1]), piece["color"], piece["texture"]))
+
+        self.gametimestamp = "game_"+str(time.time())
+        self.serialize_game(self.gametimestamp)
+
+    def add_history(self, _piece, start_pos: tuple, end_pos: tuple, steps, direction):
+        self.history.append({
+            "piece": _piece.get_name(),
+            "_from": start_pos,
+            "_to": end_pos,
+            "steps": steps,
+            "direction": direction
+        })
 
     def serialize_game(self, title="game"):
         character_map = {
             "player_turn": self.player_turn,
+            "killed_pieces": self.killed_pieces,
+            "history": self.history,
             "white_rook": [],
             "black_rook": [],
             "white_knight": [],
@@ -562,10 +614,11 @@ class GameView(arcade.View):
         data = yaml.dump(character_map, default_flow_style=False)
         with open(f"./game/{title}.yml", "w") as file:
             file.write(data)
+        self.king_check_logic()
 
-    def deserialize_game(self, file):
-        with open(f"./game/{file}.yml", "r"):
-            data = yaml.load(file, Loader=yaml.Loader)
+    def deserialize_game(self, file_name):
+        with open(f"./game/{file_name}.yml", "r") as file_name:
+            data = yaml.load(file_name, Loader=yaml.Loader)
         return data
 
 class Chess(arcade.Window):
