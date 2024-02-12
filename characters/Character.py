@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from utils.utils import *
-import arcade
+import arcade, uuid
 
 class Character(arcade.Sprite, ABC):
 
@@ -24,6 +24,7 @@ class Character(arcade.Sprite, ABC):
         self.name = _texture.split(".")[0]
         self.grid_position = _position
         self.set_pixel_position()
+        # self.object_id = uuid.uuid4()
 
     def set_pixel_position(self) -> None:
         center_x, center_y = self.grid_position.get_center_pixel()
@@ -99,4 +100,4 @@ class Character(arcade.Sprite, ABC):
         return self.name == other.get_name() and self.get_grid_position() == other.get_grid_position()
     
     # def __eq__(self, other) -> bool:
-    #     return self.name == other.get_name() and self.get_grid_position() == other.get_grid_position()
+    #     return self.object_id == other.object_id

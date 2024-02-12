@@ -1,4 +1,4 @@
-import arcade
+import arcade, yaml
 from utils.utils import *
 from characters.King import King
 from characters.Queen import Queen
@@ -532,6 +532,41 @@ class GameView(arcade.View):
         self.characters.append(self.black_pawn_G)
         self.black_pawn_H = Pawn(Position(7, 6), Color.BLACK, "black_pawn.png")
         self.characters.append(self.black_pawn_H)
+
+        self.serialize_game()
+
+    def serialize_game(self, title="game"):
+        character_map = {
+            "player_turn": self.player_turn,
+            "white_rook": [],
+            "black_rook": [],
+            "white_knight": [],
+            "black_knight": [],
+            "white_bishop": [],
+            "black_bishop": [],
+            "white_queen": [],
+            "black_queen": [],
+            "white_king": [],
+            "black_king": [],
+            "white_pawn": [],
+            "black_pawn": []
+        }
+
+        for character in self.characters:
+            curr = character_map[character.get_name()].append({
+                "position": character.get_grid_position(),
+                "color": character.get_piece_color(),
+                "texture": character.get_name() + ".png"
+            })
+
+        data = yaml.dump(character_map, default_flow_style=False)
+        with open(f"./game/{title}.yml", "w") as file:
+            file.write(data)
+
+    def deserialize_game(self, file):
+        with open(f"./game/{file}.yml", "r"):
+            data = yaml.load(file, Loader=yaml.Loader)
+        return data
 
 class Chess(arcade.Window):
     def __init__(self):
