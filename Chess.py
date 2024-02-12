@@ -64,10 +64,27 @@ class PawnSwitch(arcade.View):
             self.game_view.upgrade_pawn(self.upgrade_piece, self.bishop)
 
         self.window.show_view(self.game_view)
+
+class WinnerView(arcade.View):
+    def __init__(self, window: arcade.Window, winner: Color):
+        super().__init__(window)
+        self.window = window
+        self.winner = winner
+
+    def setup(self):
+        color_str = "WHITE" if self.winner == Color.WHITE else "BLACK"
+        text_color = arcade.color.WHITE_SMOKE if self.winner == Color.WHITE else arcade.color.BLACK_OLIVE
+        self.text = arcade.create_text_sprite(f"CHECK MATE! {color_str} WINS!", self.window.width/5, self.window.height*2/3, color=text_color, font_size=40)
+
+    def on_draw(self):
+        self.text.draw()
+
+    def on_show_view(self):
+        self.setup()
         
 
 class GameView(arcade.View):
-    def __init__(self, window: arcade.Window = None):
+    def __init__(self, window: arcade.Window):
         super().__init__(window)
         self.window = window
 
@@ -175,8 +192,9 @@ class GameView(arcade.View):
                                 kill_piece.kill()
                                 self.characters.remove(kill_piece)
                             self.set_active_cell(None)
+                            if self.king_check_logic():
+                                self.window.show_view(WinnerView(self.window, self.player_turn))
                             self.change_turn()
-                            self.king_check_logic()
                             
                     else:
                         # print("Move Not Allowed")
@@ -191,13 +209,13 @@ class GameView(arcade.View):
 
     def king_check_logic(self) -> bool:
         on_check = self.is_checked_king(self.player_turn, None, None, actual_check=True)
-        # print(on_check)
 
         if on_check:
             if self.is_check_mate(self.player_turn):
-                print("Game Over!")
+                return True
         else:
             self.set_king_check(None)
+        return False
 
     def is_pawn_move_allowed(self, active_character, direction, steps, kill_piece):
         allow_move = True
@@ -391,7 +409,7 @@ class GameView(arcade.View):
                                         no_fix = False
 
         if no_fix:
-            print(f"Check Mate on {color}")
+            print("Check Mate")
             pass
         
         return no_fix

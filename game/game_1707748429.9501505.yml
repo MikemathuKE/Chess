@@ -56,17 +56,12 @@ black_pawn:
 - color: *id001
   position: !!python/tuple
   - 5
-  - 6
+  - 5
   texture: black_pawn.png
 - color: *id001
   position: !!python/tuple
   - 6
-  - 6
-  texture: black_pawn.png
-- color: *id001
-  position: !!python/tuple
-  - 7
-  - 6
+  - 5
   texture: black_pawn.png
 black_queen:
 - color: *id001
@@ -85,7 +80,61 @@ black_rook:
   - 7
   - 7
   texture: black_rook.png
-history: []
+history:
+- _from: !!python/tuple
+  - 4
+  - 1
+  _to: !!python/tuple
+  - 4
+  - 2
+  direction: N
+  piece: white_pawn
+  steps: 1
+- _from: !!python/tuple
+  - 5
+  - 6
+  _to: !!python/tuple
+  - 5
+  - 5
+  direction: N
+  piece: black_pawn
+  steps: 1
+- _from: !!python/tuple
+  - 3
+  - 0
+  _to: !!python/tuple
+  - 7
+  - 4
+  direction: NE
+  piece: white_queen
+  steps: 4
+- _from: !!python/tuple
+  - 6
+  - 6
+  _to: !!python/tuple
+  - 6
+  - 5
+  direction: N
+  piece: black_pawn
+  steps: 1
+- _from: !!python/tuple
+  - 7
+  - 4
+  _to: !!python/tuple
+  - 6
+  - 5
+  direction: NW
+  piece: white_queen
+  steps: 1
+- _from: !!python/tuple
+  - 7
+  - 6
+  _to: !!python/tuple
+  - 6
+  - 5
+  direction: NE
+  piece: black_pawn
+  steps: 1
 killed_pieces: {}
 player_turn: &id002 !!python/object/apply:utils.utils.Color
 - 1
@@ -141,7 +190,7 @@ white_pawn:
 - color: *id002
   position: !!python/tuple
   - 4
-  - 1
+  - 2
   texture: white_pawn.png
 - color: *id002
   position: !!python/tuple
@@ -158,12 +207,7 @@ white_pawn:
   - 7
   - 1
   texture: white_pawn.png
-white_queen:
-- color: *id002
-  position: !!python/tuple
-  - 3
-  - 0
-  texture: white_queen.png
+white_queen: []
 white_rook:
 - color: *id002
   position: !!python/tuple
