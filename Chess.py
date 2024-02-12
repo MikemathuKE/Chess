@@ -66,21 +66,29 @@ class PawnSwitch(arcade.View):
         self.window.show_view(self.game_view)
 
 class WinnerView(arcade.View):
-    def __init__(self, window: arcade.Window, winner: Color):
+    def __init__(self, window: arcade.Window, winner: Color, last_board, last_play):
         super().__init__(window)
         self.window = window
         self.winner = winner
+        self.last_board = last_board
+        self.last_play = last_play
+
 
     def setup(self):
         color_str = "WHITE" if self.winner == Color.WHITE else "BLACK"
         text_color = arcade.color.WHITE_SMOKE if self.winner == Color.WHITE else arcade.color.BLACK_OLIVE
+        self.background = arcade.create_rectangle_filled(center_x=self.window.width/2, center_y=self.window.height/2, width=self.window.width, height=self.window.height, color=text_color)
         self.text = arcade.create_text_sprite(f"CHECK MATE! {color_str} WINS!", self.window.width/5, self.window.height*2/3, color=text_color, font_size=40)
 
     def on_draw(self):
+        self.background.draw()
+        self.last_board.draw()
+        self.last_play.draw()
         self.text.draw()
 
     def on_show_view(self):
         self.setup()
+        print(self.winner)
         
 
 class GameView(arcade.View):
@@ -91,6 +99,7 @@ class GameView(arcade.View):
     def setup(self):
         self.asset_dir = "./assets"
         self.player_turn = Color.WHITE
+        self.winner = None
         self.killed_pieces = {}
         self.init_board()
         self.init_characters()
@@ -192,9 +201,12 @@ class GameView(arcade.View):
                                 kill_piece.kill()
                                 self.characters.remove(kill_piece)
                             self.set_active_cell(None)
-                            if self.king_check_logic():
-                                self.window.show_view(WinnerView(self.window, self.player_turn))
                             self.change_turn()
+                            if self.king_check_logic():
+                                print("Game Over")
+                                self.winner = Color.WHITE if self.player_turn == Color.BLACK else Color.BLACK
+                                winner_view = WinnerView(self.window, self.winner, self.display_board, self.characters)
+                                self.window.show_view(winner_view)
                             
                     else:
                         # print("Move Not Allowed")
@@ -393,7 +405,7 @@ class GameView(arcade.View):
                     break
 
         if no_fix:
-            # print("King Cannot Move")
+            print("King Cannot Move")
             for character in self.characters:
                 if character.get_piece_color() != color:
                     for movt in character.get_direction_constraints():
@@ -609,6 +621,7 @@ class GameView(arcade.View):
             "player_turn": self.player_turn,
             "killed_pieces": self.killed_pieces,
             "history": self.history,
+            "winner": self.winner,
             "white_rook": [],
             "black_rook": [],
             "white_knight": [],
