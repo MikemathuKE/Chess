@@ -101,54 +101,28 @@ class Movement:
     def predict_position(_from: tuple, _direction: str, _steps: int, inverse: bool = False) -> tuple:
         x = _from[0]
         y = _from[1]
+        if inverse:
+            _steps = -_steps
         if _direction == Movement.FORWARD:
-            if inverse:
-                y -= _steps
-            else:
-                y += _steps
+            y += _steps
         elif _direction == Movement.BACKWARD:
-            if inverse:
-                y += _steps
-            else:
-                y -= _steps
+            y -= _steps
         elif _direction == Movement.LEFT:
-            if inverse:
-                x += _steps
-            else:
-                x -= _steps
+            x -= _steps
         elif _direction == Movement.RIGHT:
-            if inverse:
-                x -= _steps
-            else:
-                x += _steps
+            x += _steps
         elif _direction == Movement.FORWARD_LEFT:
-            if inverse:
-                x += _steps
-                y -= _steps
-            else:
-                x -= _steps
-                y += _steps
+            x -= _steps
+            y += _steps
         elif _direction == Movement.FORWARD_RIGHT:
-            if inverse:
-                x -= _steps
-                y -= _steps
-            else:
-                x += _steps
-                y += _steps
+            x += _steps
+            y += _steps
         elif _direction == Movement.BACKWARD_LEFT:
-            if inverse:
-                x += _steps
-                y += _steps
-            else:
-                x -= _steps
-                y -= _steps
+            x -= _steps
+            y -= _steps
         elif _direction == Movement.BACKWARD_RIGHT:
-            if inverse:
-                x -= _steps
-                y += _steps
-            else:
-                x += _steps
-                y -= _steps
+            x += _steps
+            y -= _steps
         elif _direction == Movement.NNE:
             if inverse:
                 x -= 1

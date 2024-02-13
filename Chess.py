@@ -88,7 +88,7 @@ class WinnerView(arcade.View):
 
     def on_show_view(self):
         self.setup()
-        print(self.winner)
+        # print(self.winner)
         
 
 class GameView(arcade.View):
@@ -103,6 +103,10 @@ class GameView(arcade.View):
         self.killed_pieces = {}
         self.init_board()
         self.init_characters()
+        self.win_sound = arcade.load_sound(f"{self.asset_dir}/win.wav")
+        self.move_sound = arcade.load_sound(f"{self.asset_dir}/move.wav")
+        self.attack_sound = arcade.load_sound(f"{self.asset_dir}/attack.wav")
+        self.check_sound = arcade.load_sound(f"{self.asset_dir}/check.wav")
 
     def on_draw(self):
         self.clear()
@@ -200,13 +204,19 @@ class GameView(arcade.View):
                             if kill_piece:
                                 kill_piece.kill()
                                 self.characters.remove(kill_piece)
+                                arcade.play_sound(self.attack_sound)
+                            else:
+                                arcade.play_sound(self.move_sound)
                             self.set_active_cell(None)
                             self.change_turn()
                             if self.king_check_logic():
-                                print("Game Over")
+                                # print("Game Over")
+                                arcade.play_sound(self.win_sound)
                                 self.winner = Color.WHITE if self.player_turn == Color.BLACK else Color.BLACK
                                 winner_view = WinnerView(self.window, self.winner, self.display_board, self.characters)
                                 self.window.show_view(winner_view)
+                            if self.king_check_highlight:
+                                arcade.play_sound(self.check_sound)
                             
                     else:
                         # print("Move Not Allowed")
@@ -242,7 +252,7 @@ class GameView(arcade.View):
                 allow_move = self.pawn_first_move(active_character, direction, steps)
                 kill_piece = None            
             elif (direction == Movement.FORWARD_LEFT) or (direction == Movement.FORWARD_RIGHT):
-                print("Checking for En Passant")
+                # print("Checking for En Passant")
                 allow_move, kill_piece_pos = self.pawn_en_passant(active_character, direction, steps)
                 kill_piece = self.find_piece_by_position(kill_piece_pos)
             
@@ -391,7 +401,7 @@ class GameView(arcade.View):
     
     def is_check_mate(self, color: Color) -> bool:
         king = self.find_piece_by_character(King, color)
-        # print("Checking for Check Mate")
+        # print("Checking for Check Mate for ", king.get_piece_color())
 
         no_fix = True
         for movt in king.get_direction_constraints():
@@ -403,25 +413,29 @@ class GameView(arcade.View):
                     no_fix = False
                     # print(f"Expected King Pos freeing from check: {expected_king_pos}")
                     break
-
+        
+        pawn_count = 0
         if no_fix:
-            print("King Cannot Move")
+            # print("King Cannot Move")
             for character in self.characters:
-                if character.get_piece_color() != color:
-                    for movt in character.get_direction_constraints():
-                        for steps in range(1, character.get_max_steps()+1):
-                            expected_character_pos = Movement.predict_position(character.get_grid_position(), movt, steps, character.is_inversed())
-                            move_possible, kill_piece = self.is_path_clear(character, character.get_grid_position(), movt, steps, [character.get_grid_position()], expected_character_pos)
-                            if move_possible:
-                                allow_move = True
-                                if isinstance(character, Pawn):
-                                    allow_move, kill_piece = self.is_pawn_move_allowed(character, movt, steps, kill_piece)
-                                if allow_move:
-                                    if not self.is_checked_king(color, exclusion=character.get_grid_position(), inclusion=expected_character_pos, moved_char=character):
-                                        no_fix = False
+                if character.get_piece_color() == color:
+                    if not isinstance(character, King):
+                        for movt in character.get_direction_constraints():
+                            for steps in range(1, character.get_max_steps()+1):
+                                expected_character_pos = Movement.predict_position(character.get_grid_position(), movt, steps, character.is_inversed())
+                                move_possible, kill_piece = self.is_path_clear(character, character.get_grid_position(), movt, steps, None, None)
+                                if move_possible:
+                                    allow_move = True
+                                    if isinstance(character, Pawn):
+                                        allow_move, kill_piece = self.is_pawn_move_allowed(character, movt, steps, kill_piece)
+                                    if allow_move:
+                                        if not self.is_checked_king(color, exclusion=character.get_grid_position(), inclusion=expected_character_pos, moved_char=character):
+                                            no_fix = False
+                                            # print(f"Piece {character.get_name()} at {character.get_grid_position()} blocks king by moving to {expected_character_pos} and attacking {kill_piece}")
+                                            break
 
         if no_fix:
-            print("Check Mate")
+            # print("Check Mate")
             pass
         
         return no_fix
@@ -465,7 +479,7 @@ class GameView(arcade.View):
         if len(self.checking_pieces[color]) > 0:
             if actual_check:
                 self.set_king_check(king.get_grid_position())
-            string_color = "White" if color == Color.WHITE else "Black"
+            # string_color = "White" if color == Color.WHITE else "Black"
             # print(f"Pieces checking {string_color} king", self.checking_pieces)
             return True
         return False
@@ -577,7 +591,7 @@ class GameView(arcade.View):
         # self.characters.append(self.black_pawn_H)piece["position"][0], piece["position"][1]
 
         self.history = []
-        game_data = self.deserialize_game("game_start")
+        game_data = self.deserialize_game("game_start", "bin")
         for key in game_data.keys():
             if key == "player_turn":
                 self.player_turn = game_data[key]
@@ -616,7 +630,7 @@ class GameView(arcade.View):
             "direction": direction
         })
 
-    def serialize_game(self, title="game"):
+    def serialize_game(self, title="game", folder='game'):
         character_map = {
             "player_turn": self.player_turn,
             "killed_pieces": self.killed_pieces,
@@ -644,12 +658,12 @@ class GameView(arcade.View):
             })
 
         data = yaml.dump(character_map, default_flow_style=False)
-        with open(f"./game/{title}.yml", "w") as file:
+        with open(f"./{folder}/{title}.yml", "w") as file:
             file.write(data)
         self.king_check_logic()
 
-    def deserialize_game(self, file_name):
-        with open(f"./game/{file_name}.yml", "r") as file_name:
+    def deserialize_game(self, file_name, folder="game"):
+        with open(f"./{folder}/{file_name}.yml", "r") as file_name:
             data = yaml.load(file_name, Loader=yaml.Loader)
         return data
 
