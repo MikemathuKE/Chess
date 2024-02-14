@@ -4,12 +4,32 @@ class ChessAI:
 
     def __init__(self, color: Color) -> None:
         self.color = color
+        self.comp_vision = [
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        ]
 
         ### BIASES ###
-        self.game_stage = 0 # Weight that Evaluates at what stage the game is in, some evaluation functions take precedence when at later stages of the game
-        self.defense_weight = 1 # Weight that Evaluates when defense is paramount
-        self.attack_weight = 0 # Weight that Evaluates when attack is paramount
+        self.game_stage = float(0) # Weight that Evaluates at what stage the game is in, some evaluation functions take precedence when at later stages of the game
+        self.defense_weight = float(1) # Weight that Evaluates when defense is paramount
+        self.attack_weight = float(0) # Weight that Evaluates when attack is paramount
 
+    ### CHESS BOARD VIEW/UPDATE ###
+    def view_board(self, character_pieces) -> None:
+        for character in character_pieces:
+            pos_x, pos_y = character.get_position().get_grid_position()
+            self.comp_vision[pos_x][pos_y] = character.get_id()
+
+    def update_piece_movt(self, original_pos, new_pos) -> None:
+        piece = self.comp_vision[original_pos[0]][original_pos[1]]
+        self.comp_vision[original_pos[0]][original_pos[1]] = 0
+        self.comp_vision[new_pos[0]][new_pos[1]] = piece
 
     ### COST FUNCTIONS ###
     """Evaluation function to check if pieces are defended"""

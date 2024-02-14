@@ -11,3 +11,4 @@ class Bishop(Character):
             Movement.BACKWARD_LEFT,
             Movement.BACKWARD_RIGHT
         ])
+        self.id = int(Pieces.BISHOP) & int(color)

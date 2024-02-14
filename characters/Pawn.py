@@ -11,3 +11,4 @@ class Pawn(Character):
             Movement.FORWARD
         ])
         self.set_max_steps(2)
+        self.id = int(Pieces.PAWN) & int(color)

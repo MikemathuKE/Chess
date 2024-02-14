@@ -11,3 +11,4 @@ class Rook(Character):
             Movement.LEFT,
             Movement.RIGHT
         ])
+        self.id = int(Pieces.ROOK) & int(color)

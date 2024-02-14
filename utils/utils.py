@@ -239,3 +239,11 @@ class Position:
 class Color(Enum):
     BLACK = 0
     WHITE = 1
+
+class Pieces(Enum):
+    KING    = 1 << 1
+    QUEEN   = 1 << 2
+    ROOK    = 1 << 3
+    BISHOP  = 1 << 4
+    KNIGHT  = 1 << 5
+    PAWN    = 1 << 6

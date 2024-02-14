@@ -6,3 +6,4 @@ class King(Character):
     def __init__(self, position: Position, color: Color, texture: str) -> None:
         super().__init__(position, color, texture)
         self.set_max_steps(2)
+        self.id = int(Pieces.KING) & int(color)

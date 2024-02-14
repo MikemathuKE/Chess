@@ -16,3 +16,4 @@ class Knight(Character):
             Movement.SSE
         ])
         self.set_max_steps(1)
+        self.id = int(Pieces.KNIGHT) & int(color)
