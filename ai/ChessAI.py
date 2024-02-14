@@ -4,10 +4,14 @@ class ChessAI:
 
     def __init__(self, color: Color) -> None:
         self.color = color
+
+        ### BIASES ###
         self.game_stage = 0 # Weight that Evaluates at what stage the game is in, some evaluation functions take precedence when at later stages of the game
         self.defense_weight = 1 # Weight that Evaluates when defense is paramount
         self.attack_weight = 0 # Weight that Evaluates when attack is paramount
 
+
+    ### COST FUNCTIONS ###
     """Evaluation function to check if pieces are defended"""
     def pieces_defended(self, character_pieces):
         pass

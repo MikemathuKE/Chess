@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('game', 'dist/game'), ('assets', 'dist/assets')],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

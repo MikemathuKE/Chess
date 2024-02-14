@@ -2,25 +2,26 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Chess"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Michael Mathu"
 #define MyAppExeName "main.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{CD3C91E0-0045-460D-8EBD-7374835F5209}
+AppId={{B03AC23D-11BC-45F5-B58B-4CBEC705DC63}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName=C:/ProgramData\{#MyAppName}
+DisableDirPage=yes
 DisableProgramGroupPage=yes
 LicenseFile=C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\LICENSE
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputDir=C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\installer
-OutputBaseFilename=Chess
+OutputBaseFilename=mysetup
 SetupIconFile=C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\assets\Icon.ico
 Compression=lzma
 SolidCompression=yes
@@ -35,6 +36,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\dist\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\dist\bin\*"; DestDir: "{app}\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "C:\Users\CloudSecOffice\Documents\Projects\Practice\Chess\dist\game\*"; DestDir: "{app}\game"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
